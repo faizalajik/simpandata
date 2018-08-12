@@ -7,6 +7,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.format.DateFormat;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -17,10 +19,15 @@ import android.widget.Spinner;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -34,7 +41,7 @@ public class AddReminder extends AppCompatActivity {
     private Button btnUpdate;
     private EditText Editdate,Edittotal,Edittime;
     private String date, time, note, total;
-    SharedPreferences preferences;
+    private SharedPreferences preferences;
     public String filename = "reminder1";
     public static final String KEYPREF = "Key Preferences";
     public static final String KEYTOTAL = "Key Total";
@@ -42,7 +49,8 @@ public class AddReminder extends AppCompatActivity {
     public static final String KEYWAKTU = "Key Waktu";
     public static final String KEYNOTE = "Key Note";
     public static final String KEYCATEGORY = "Key Category";
-    File file ;
+    private File file ;
+    private RecyclerView rv;
     private ArrayList<DataReminder> data;
     private String[] jenisAsuransi = {
             "Health Insurance",
@@ -60,19 +68,13 @@ public class AddReminder extends AppCompatActivity {
                 android.R.layout.simple_spinner_dropdown_item, jenisAsuransi);
         spinnerAdd.setAdapter(adapter);
 
-
-//        spinnerAdd.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-//            @Override
-//            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-//
-//            }
-//        });
         dateFormatter = new SimpleDateFormat("dd/MM/yyyy", Locale.US);
 
         Editdate = (EditText) findViewById(R.id.edit_date);
         Edittotal = (EditText) findViewById(R.id.edit_total);
         Edittime = (EditText)findViewById(R.id.edit_time);
         btnUpdate = (Button)findViewById(R.id.button_update);
+
         Editdate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -89,57 +91,49 @@ public class AddReminder extends AppCompatActivity {
         });
         date=Editdate.getText().toString();
         time=Edittime.getText().toString();
-        preferences = getSharedPreferences(KEYPREF, Context.MODE_PRIVATE);
-        if (preferences.contains(KEYTOTAL)) {
-            Editdate.setText(preferences.getString(KEYTANGGAL, ""));
-            Edittotal.setText(preferences.getString(KEYTOTAL, ""));
-            Edittime.setText(preferences.getString(KEYWAKTU, ""));
-
-        }
-
+        loaddata();
         btnUpdate.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+               // data = new ArrayList<>();
+
                // String category = category.getText().toString();
                 String total = Edittotal.getText().toString();
                 String tanggal = Editdate.getText().toString();
                 String waktu = Edittime.getText().toString();
-                //String note = Edit.getText().toString();
-                SharedPreferences.Editor editor = preferences.edit();
-                editor.putString(KEYTOTAL, total);
-                editor.putString(KEYTANGGAL, tanggal);
-                editor.putString(KEYWAKTU, waktu);
-                editor.apply();
+
                 Toast.makeText(AddReminder.this, "UserName dan Password disimpan", Toast.LENGTH_SHORT).show();
                 data.add(new DataReminder(total,tanggal,waktu,"faizal"));
+                savedata();
                 Intent intent = new Intent(AddReminder.this, MainActivity.class);
-                intent.putExtra("data1", Edittotal.getText().toString());
-                intent.putExtra("data2", Edittime.getText().toString());
-                intent.putExtra("data3", Editdate.getText().toString());
+                Bundle args = new Bundle();
+                args.putSerializable("ARRAYLIST",(Serializable)data);
+                intent.putExtra("BUNDLE",args);
                 startActivity(intent);
-
-                try {
-                    FileOutputStream fos = new FileOutputStream("t.tmp");
-                    ObjectOutputStream oos = new ObjectOutputStream(fos);
-                    oos.writeObject(data);
-                    oos.close();
-                } catch (java.io.IOException e) {
-                    e.printStackTrace();
-                }
-
-//                FileOutputStream outputStream;
-//                filename = total;
-//                try {
-//                    outputStream = openFileOutput("textfile.txt", Context.MODE_PRIVATE);
-//                    outputStream.write(date.getBytes());
-//                    outputStream.close();
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
             }
         });
 
     }
+    private void savedata (){
+        SharedPreferences sharedPreferences = getSharedPreferences("datasave", MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        Gson gson = new Gson();
+        String json = gson.toJson(data);
+        editor.putString("datalist",json);
+        editor.apply();
+    }
+    private void loaddata() {
+        SharedPreferences sharedPreferences = getSharedPreferences("datasave", MODE_PRIVATE);
+        Gson gson = new Gson();
+        String json = sharedPreferences.getString("datalist", null);
+        Type type = new TypeToken<ArrayList<DataReminder>>() {}.getType();
+        data = gson.fromJson(json, type);
+
+        if (data == null) {
+            data = new ArrayList<>();
+        }
+    }
+
     private void showDateDialog(){
         Calendar newCalendar = Calendar.getInstance();
 
@@ -188,6 +182,5 @@ public class AddReminder extends AppCompatActivity {
 
         timePickerDialog.show();
     }
-
 
 }
